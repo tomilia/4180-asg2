@@ -21,43 +21,54 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 public class PRPreProcess {
 	 public static class TokenizerMapper
      extends Mapper<Object, Text, Text, IntWritable>{
-		 private static final Log LOG = LogFactory.getLog(NgramInitialCount.class);
-		 
 		 int i=0;
      private HashMap<String, Integer> count_ini = new HashMap<String, Integer>();;
-     private IntWritable id = new IntWritable();
+     private Text id = new Text();
      private IntWritable next = new IntWritable();
-     private PRNodeWritable pWritable = new PRNodeWritable();
+     
      public void map(Object key, Text value, Context context
              ) throws IOException, InterruptedException {
-    	 Configuration conf = context.getConfiguration();
-         String[] words = value.toString().split("\t ") ;
-         id.set(words[0]);
-         next.set(words[1]);
+         Configuration conf = context.getConfiguration();
+         StringTokenizer itr = new StringTokenizer(value.toString()," ");
+         while (itr.hasMoreTokens()) {
+             String idx = itr.nextToken();
+         id.set(idx);
+         if(itr.hasMoreTokens())
+         {
+             int next_hop = Integer.parseInt(itr.nextToken());
+             next.set(next_hop);
+         }
+         if(itr.hasMoreTokens())
+         {
+             itr.nextToken();
+         }
+
+
          context.write(id,next);
        
              }
- 
+             
+            }
   
 }
 
 public static class IntSumReducer
-     extends Reducer<Text,IntWritable,Text,IntWritable> {
-     private IntWritable result = new IntWritable();
-
+     extends Reducer<Text,IntWritable,Text,PRNodeWritable> {
+     private ArrayList<Integer> arr = new ArrayList<>();
+     
      public void reduce(Text key, Iterable<IntWritable> values,
              Context context
              ) throws IOException, InterruptedException {
                 
                 int sum = 0;
-                
+                arr.clear();
                 for (IntWritable val : values) 
                 {
-                  sum++ ;
+                   arr.add(val.get());
                 }
-                result.set(sum);
-                context.write(key, result);
 
+                PRNodeWritable pWritable = new PRNodeWritable(key.toString(),arr,0.0);
+                context.write(key,pWritable);
              }
      
 }
