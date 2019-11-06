@@ -29,13 +29,21 @@ public class PRAdjust {
 		 int i=0;
      private Text id = new Text();
      private IntWritable next = new IntWritable();
-     
+     @Override
      public void map(Object key, Text value, Context context
              ) throws IOException, InterruptedException {
          Configuration conf = context.getConfiguration();
          
-             String idz[]=value.toString().split(" ",1);
-            context.write(new Text(idz[0]),new Text(value.toString()));
+             String val[] = value.toString().split("\\D+");
+             if(val.length>1)
+             {
+               String continousNode = "";
+             for(int k=1;k<val.length;k++)
+             continousNode+=val[k]+" ";
+              context.write(new Text(val[0]),new Text(continousNode));
+             }
+            else
+            context.write(new Text(val[0]),new Text("()"));
            
            
              
@@ -44,14 +52,14 @@ public class PRAdjust {
 }
 
 public static class AdjustReducer
-     extends Reducer<Text,Text,Text,IntWritable> {
+     extends Reducer<Text,Text,Text,Text> {
      private ArrayList<Integer> arr = new ArrayList<>();
-     
-     public void reduce(Text key, Iterable<IntWritable> values,
+     @Override
+     public void reduce(Text key, Iterable<Text> values,
              Context context
              ) throws IOException, InterruptedException {
-                
-               context.write(new Text("a"),new IntWritable(1));
+                for(Text val:values)
+               context.write(key,val);
              }
      
 }
