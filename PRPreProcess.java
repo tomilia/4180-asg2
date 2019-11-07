@@ -28,15 +28,14 @@ public class PRPreProcess {
     static enum count_x {
          count_i;
      }
-     private static int c;
+       
 	 public static class TokenizerMapper
      extends Mapper<Object, Text, Text, ObjectWritable>{
-
-        private HashMap<String, ArrayList<Integer>> count_ini = new HashMap<String, ArrayList<Integer>>();;
+        private HashMap<String, Integer> count_ini = new HashMap<String, Integer>();;
 		 int i=0;
      private Text id = new Text();
      private IntWritable next = new IntWritable();
-     @Override
+     
      public void map(Object key, Text value, Context context
              ) throws IOException, InterruptedException {
          Configuration conf = context.getConfiguration();
@@ -45,33 +44,36 @@ public class PRPreProcess {
              String idx = itr.nextToken();
              if(!count_ini.containsKey(idx))
              {
-                 ArrayList<Integer> gg = new ArrayList<Integer>(); 
-                 count_ini.put(idx, gg);
-                context.getCounter(count_x.count_i).increment(1);
+                 count_ini.put(idx, 1);
+                 context.getCounter(count_x.count_i).increment(1);
              }
-             
+             else
+             {
+                 int sum=count_ini.get(idx)+1;
+                 count_ini.put(idx, sum);
+             }
 
+            Integer.parseInt(idx);
+         id.set(idx);
          if(itr.hasMoreTokens())
          {
             String next_h = itr.nextToken();
             if(!count_ini.containsKey(next_h))
             {
-                ArrayList<Integer> zc = new ArrayList<Integer>();
-                count_ini.put(next_h,zc);
+                count_ini.put(next_h, -1);
                 context.getCounter(count_x.count_i).increment(1);
             }
-
             int next_hop = Integer.parseInt(next_h);
              
-             count_ini.get(idx).add(next_hop);
+             next.set(next_hop);
          }
          if(itr.hasMoreTokens())
          {
              itr.nextToken();
          }
 
-         
-         
+
+         context.write(id,new ObjectWritable(next));
        
              }
              
@@ -81,53 +83,50 @@ public class PRPreProcess {
     Iterator iterator = count_ini.entrySet().iterator();
     while (iterator.hasNext()) {
        Map.Entry me2 = (Map.Entry) iterator.next();
-       double originalPR=1.0/context.getCounter(count_x.count_i).getValue();
-       double p=originalPR;
-        PRNodeWritable ac= new PRNodeWritable(me2.getKey().toString(),(ArrayList<Integer>)me2.getValue(),originalPR);
-       context.write(new Text(me2.getKey().toString()),new ObjectWritable(ac));
-       if(((ArrayList<Integer>)me2.getValue()).size()>0)
-       {
-        p = originalPR/((ArrayList<Integer>)me2.getValue()).size();       
+       context.write(new Text(me2.getKey().toString()),new ObjectWritable(String.valueOf(context.getCounter(count_x.count_i).getValue())));
 
-       for(int a:(ArrayList<Integer>)me2.getValue())
-       {
-           Object obj = String.valueOf(p);
-           context.write(new Text(String.valueOf(a)),new ObjectWritable(obj));
-       }
-       }
-
-    
+    if((int)me2.getValue()==-1)
+    {
+        IntWritable iw= new IntWritable((int)me2.getValue());
+       context.write(new Text(me2.getKey().toString()),new ObjectWritable(iw));
+    }
   }
   }
 }
 
 public static class IntSumReducer
      extends Reducer<Text,ObjectWritable,Text,PRNodeWritable> {
-         
      private ArrayList<Integer> arr = new ArrayList<>();
      
      public void reduce(Text key, Iterable<ObjectWritable> values,
              Context context
              ) throws IOException, InterruptedException {
-                PRNodeWritable M=new PRNodeWritable();
-                double sum=0;
-                for (ObjectWritable val:values)
+                
+                int sum = 0;
+                arr.clear();
+                int ttn=0;
+                for (ObjectWritable val : values) 
                 {
-                    if(val.get() instanceof PRNodeWritable)
-                    M = (PRNodeWritable)val.get();
-                    else
-                    sum+=Double.parseDouble((String)val.get());
+                
+                    //non dangling nodes
+                if(val.get() instanceof IntWritable)
+                    {
+                        int z=((IntWritable)(val.get())).get();
+                        if(z!=-1)
+                         arr.add(z);
+                    }
+                else{
+                       ttn= Integer.parseInt((String)val.get());
+                    }
                 }
-                M.setPRV(sum);
-                context.write(key,M);
-               /*
-                PRNodeWritable pWritable = new PRNodeWritable(key.toString(),arr,context.getCounter(count_x.count_i).getValue());
-                */
-                
-                
+
+                PRNodeWritable pWritable = new PRNodeWritable(key.toString(),arr,0.0,ttn);
+                context.write(key,pWritable);
              }
      
 }
+     
+
 
 public static void main(String[] args) throws Exception {
  Configuration conf = new Configuration();
@@ -163,7 +162,7 @@ job2.setOutputKeyClass(Text.class);
 job2.setOutputValueClass(PRNodeWritable.class);
 FileInputFormat.addInputPath(job2, new Path(args[0]));
  */
-
+/*
 Job job2 = new Job(conf, "adjust");
 job2.setJarByClass(PRAdjust.class);
 job2.setMapperClass(AdjustMapper.class);
@@ -178,7 +177,7 @@ ControlledJob ctrjob2 = new ControlledJob(conf);
  ctrjob2.addDependingJob(ctrjob1);
  FileOutputFormat.setOutputPath(job2, new Path(args[1]+"/out2"));  
  jobs.addJob(ctrjob2);
- 
+ */
 
  Thread  t=new Thread(jobs);  
  t.start();  
