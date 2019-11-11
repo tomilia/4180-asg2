@@ -1,6 +1,4 @@
 package aa;
-import aa.PRAdjust.AdjustMapper;
-import aa.PRAdjust.AdjustReducer;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,6 +15,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.lib.jobcontrol.JobControl;
 import org.apache.hadoop.mapreduce.lib.jobcontrol.ControlledJob; 
 import org.apache.hadoop.io.IntWritable;
+
 import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -25,6 +24,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 public class PRPreProcess {
+    public static enum ReachCounter{ COUNT };
     static enum count_x {
          count_i;
      }
@@ -119,8 +119,8 @@ public static class IntSumReducer
                        ttn= Integer.parseInt((String)val.get());
                     }
                 }
-
-                PRNodeWritable pWritable = new PRNodeWritable(key.toString(),arr,0.0,ttn);
+                
+                PRNodeWritable pWritable = new PRNodeWritable(key.toString(),arr,-1,ttn,0.0);
                 context.write(key,pWritable);
              }
      
@@ -128,78 +128,4 @@ public static class IntSumReducer
      
 
 
-public static void main(String[] args) throws Exception {
- Configuration conf = new Configuration();
- conf.set("N",args[2]);
- conf.set("mapreduce.textoutputformat.separator"," ");
- 
- Job job = new Job(conf, "word count");
- job.setJarByClass(PRPreProcess.class);
- job.setMapperClass(TokenizerMapper.class);
- job.setReducerClass(IntSumReducer.class);
- job.setMapOutputKeyClass(Text.class);
- job.setMapOutputValueClass(ObjectWritable.class);
- job.setOutputKeyClass(Text.class);
- job.setOutputValueClass(PRNodeWritable.class);
- FileInputFormat.addInputPath(job, new Path(args[0]));
-
- ControlledJob ctrjob1 = new ControlledJob(conf);
- ctrjob1.setJob(job);
- FileOutputFormat.setOutputPath(job, new Path(args[1]));
- 
- JobControl jobs = new JobControl("mycontrol");
- jobs.addJob(ctrjob1);
- 
- /*
-    JOB222
-    Job job2 = new Job(conf, "adjust");
-job2.setJarByClass(PRPreProcess.class);
-job2.setMapperClass(TokenizerMapper.class);
-job2.setReducerClass(IntSumReducer.class);
-job2.setMapOutputKeyClass(Text.class);
-job2.setMapOutputValueClass(IntWritable.class);
-job2.setOutputKeyClass(Text.class);
-job2.setOutputValueClass(PRNodeWritable.class);
-FileInputFormat.addInputPath(job2, new Path(args[0]));
- */
-/*
-Job job2 = new Job(conf, "adjust");
-job2.setJarByClass(PRAdjust.class);
-job2.setMapperClass(AdjustMapper.class);
-job2.setReducerClass(AdjustReducer.class);
-job2.setMapOutputKeyClass(Text.class);
-job2.setMapOutputValueClass(Text.class);
-job2.setOutputKeyClass(Text.class);
-job2.setOutputValueClass(Text.class);
-FileInputFormat.addInputPath(job2, new Path(args[1]+"/part*")); 
-ControlledJob ctrjob2 = new ControlledJob(conf);
- ctrjob2.setJob(job2);
- ctrjob2.addDependingJob(ctrjob1);
- FileOutputFormat.setOutputPath(job2, new Path(args[1]+"/out2"));  
- jobs.addJob(ctrjob2);
- */
-
- Thread  t=new Thread(jobs);  
- t.start();  
-   
- while(true){  
-       
-     if(jobs.allFinished()){
-         
-         jobs.stop();  
-         
-         System.exit(1);  
-         
-         break;  
-     }  
-       
-     if(jobs.getFailedJobList().size()>0){
-         jobs.stop();  
-         System.exit(1);  
-         break;  
-     }  
-       
- }
- 
-}
 }
